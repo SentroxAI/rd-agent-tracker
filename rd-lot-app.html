@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>RD Lot Register — Mamta Uniyal</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#EDE6D3;
+    --paper-deep:#E3DAC0;
+    --card:#FBF8EF;
+    --ink:#22392A;
+    --ink-soft:#5B6D5C;
+    --hair:#D9CEAE;
+    --gold:#AD7F26;
+    --gold-soft:#E7D6A8;
+    --paid:#3E7C4A;
+    --paid-soft:#DCEADD;
+    --pending:#A24230;
+    --pending-soft:#F3E1DA;
+    --shadow: 0 1px 0 rgba(34,57,42,.06);
+    --serif: Georgia, 'Times New Roman', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--paper);
+    font-family:var(--sans); color:var(--ink);
+    display:flex; justify-content:center;
+  }
+  .app{
+    width:100%; max-width:480px; min-height:100vh;
+    background:var(--paper);
+    display:flex; flex-direction:column;
+    position:relative;
+    border-left:1px solid var(--hair); border-right:1px solid var(--hair);
+    display:none;
+  }
+  .app.ready{display:flex;}
+  .login-screen{width:100%; max-width:480px; min-height:100vh; padding:28px 20px; display:flex; align-items:center; background:var(--paper);}
+  .login-card{width:100%; background:var(--card); border:1px solid var(--hair); border-radius:6px; padding:22px; box-shadow:var(--shadow);}
+  .login-card h1{font:700 24px var(--serif); margin:0 0 5px;}
+  .login-card p{font-size:12px; color:var(--ink-soft); line-height:1.5; margin:0 0 18px;}
+  .login-card label{display:block; font-size:11.5px; color:var(--ink-soft); margin-bottom:5px;}
+  .login-card input{width:100%; border:1px solid var(--hair); border-radius:4px; background:var(--paper); color:var(--ink); padding:12px 10px; font:15px var(--sans);}
+  .login-card input:focus{outline:2px solid var(--gold-soft); outline-offset:1px;}
+  .login-error{min-height:18px; margin-top:8px; color:var(--pending); font-size:11px;}
+  .login-card .primary-btn{width:100%; margin-top:8px;}
+  .session-label{font-size:11px; color:var(--ink-soft); margin-left:auto; text-align:right;}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    padding:18px 18px 14px; background:var(--paper);
+    border-bottom:1px solid var(--hair);
+    position:sticky; top:0; z-index:20;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-mark{
+    width:42px; height:42px; border-radius:3px;
+    background:var(--ink); color:var(--paper);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--serif); font-weight:700; font-size:15px; letter-spacing:.5px;
+    transform:rotate(-2deg);
+    box-shadow: 2px 2px 0 var(--gold-soft);
+  }
+  .brand h1{margin:0; font-family:var(--serif); font-size:20px; font-weight:700; letter-spacing:.2px;}
+  .brand p.agent{margin:2px 0 0; font-size:12.5px; color:var(--ink-soft);}
+  .top-actions{margin-left:auto; display:flex; gap:6px;}
+  .icon-btn{width:34px; height:34px; border:1px solid var(--hair); border-radius:4px; background:var(--card); color:var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .icon-btn:active{transform:scale(.94);}
+  .icon-btn svg{width:17px; height:17px;}
+
+  /* ---------- views ---------- */
+  .view{display:none; flex:1; padding:16px 16px 100px;}
+  .view.active{display:block;}
+
+  /* ---------- summary strip ---------- */
+  .stat-row{display:flex; gap:10px; margin-bottom:16px;}
+  .stat{
+    flex:1; background:var(--card); border:1px solid var(--hair); border-radius:4px;
+    padding:12px 10px; text-align:left; box-shadow:var(--shadow);
+  }
+  .stat .num{font-family:var(--serif); font-size:20px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .stat .lbl{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+  .stat.gold .num{color:var(--gold);}
+  .stat.paid .num{color:var(--paid);}
+
+  /* ---------- search ---------- */
+  .search-wrap{position:relative; margin-bottom:14px;}
+  .search-wrap input{
+    width:100%; padding:11px 14px; border-radius:4px; border:1px solid var(--hair);
+    background:var(--card); font-size:14px; color:var(--ink); font-family:var(--sans);
+  }
+  .search-wrap input:focus{outline:2px solid var(--gold-soft); outline-offset:1px;}
+  .search-wrap input::placeholder{color:#9AA79C;}
+
+  .month-key{
+    display:flex; justify-content:space-between; padding:0 4px 6px;
+    font-size:10px; color:var(--ink-soft); letter-spacing:.4px;
+  }
+  .tracker-tools{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px;}
+  .year-select{border:1px solid var(--hair); border-radius:4px; background:var(--card); color:var(--ink); padding:9px 10px; font:600 13px var(--sans);}
+  .collection-card{background:var(--card); border:1px solid var(--hair); border-radius:5px; padding:12px; margin:4px 0 14px; box-shadow:var(--shadow);}
+  .collection-card h2{font:700 15px var(--serif); margin:0 0 10px;}
+  .collection-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:7px;}
+  .collection-month{border:1px solid var(--hair); border-radius:3px; padding:7px 5px; background:var(--paper);}
+  .collection-month .month-name{display:block; font-size:10px; color:var(--ink-soft);}
+  .collection-month .month-total{display:block; margin-top:3px; font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .member-actions{display:flex; justify-content:flex-end; margin-bottom:12px;}
+  .primary-btn{border:1px solid var(--ink); border-radius:4px; background:var(--ink); color:var(--paper); padding:9px 12px; font:600 12px var(--sans); cursor:pointer;}
+  .member-form{display:none; background:var(--card); border:1px solid var(--hair); border-radius:5px; padding:12px; margin-bottom:14px; box-shadow:var(--shadow);}
+  .member-form.open{display:block;}
+  .member-form h2{font:700 15px var(--serif); margin:0 0 10px;}
+  .member-form-grid{display:grid; grid-template-columns:1.2fr 1.6fr 1fr; gap:8px;}
+  .member-form input{width:100%; border:1px solid var(--hair); border-radius:4px; background:var(--paper); color:var(--ink); padding:10px 8px; font:13px var(--sans); min-width:0;}
+  .member-form textarea{width:100%; border:1px solid var(--hair); border-radius:4px; background:var(--paper); color:var(--ink); padding:10px 8px; font:13px var(--sans); margin-top:8px; resize:vertical;}
+  .member-acc-detail{font-size:10px; color:var(--ink-soft); margin-top:2px;}
+  .ocr-row{display:flex; align-items:center; gap:8px; margin-top:10px; font-size:11px; color:var(--ink-soft);}
+  .ocr-row input{padding:0; border:0; background:none;}
+  .entry-choice{display:flex; gap:8px; margin-bottom:12px;}
+  .entry-choice button{flex:1;}
+  .entry-panel{display:none;}
+  .entry-panel.active{display:block;}
+  .ocr-results{display:none; margin-top:12px;}
+  .ocr-results.visible{display:block;}
+  .ocr-results h3{font:700 13px var(--serif); margin:0 0 8px;}
+  .ocr-member{border:1px solid var(--hair); border-radius:4px; padding:8px; margin-bottom:8px; background:var(--paper);}
+  .ocr-member-grid{display:grid; grid-template-columns:1.1fr 1.6fr 1fr; gap:6px;}
+  .ocr-member input,.ocr-member textarea{width:100%; border:1px solid var(--hair); border-radius:3px; background:var(--card); color:var(--ink); padding:7px; font:12px var(--sans); min-width:0;}
+  .ocr-member textarea{margin-top:6px; resize:vertical;}
+  .member-form input:focus{outline:2px solid var(--gold-soft); outline-offset:1px;}
+  .member-form-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:10px;}
+  .secondary-btn{border:1px solid var(--hair); border-radius:4px; background:var(--paper); color:var(--ink); padding:9px 12px; font:600 12px var(--sans); cursor:pointer;}
+  @media (max-width:380px){.member-form-grid{grid-template-columns:1fr 1fr;}.member-form-grid input:nth-child(2){grid-column:span 2;}}
+
+  /* ---------- member card ---------- */
+  .member{
+    background:var(--card); border:1px solid var(--hair); border-radius:5px;
+    padding:12px 12px 10px; margin-bottom:10px; box-shadow:var(--shadow);
+  }
+  .member-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:9px; gap:8px;}
+  .member-name{font-family:var(--serif); font-size:14.5px; font-weight:700; line-height:1.25;}
+  .member-acc{font-size:10.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums; margin-top:1px;}
+  .member-amt{font-size:14px; font-weight:700; color:var(--ink); white-space:nowrap; font-variant-numeric:tabular-nums;}
+  .member-amt small{display:block; font-size:9.5px; font-weight:400; color:var(--ink-soft); text-align:right;}
+  .member-delete{width:32px; height:32px; margin-left:6px; border:1px solid var(--hair); border-radius:4px; background:var(--paper); color:var(--pending); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; vertical-align:top;}
+  .member-delete:hover{background:var(--pending-soft);}
+  .member-delete svg{width:16px; height:16px;}
+
+  .months{display:grid; grid-template-columns:repeat(12,minmax(28px,1fr)); gap:6px;}
+  .m-chip{
+    min-height:38px; aspect-ratio:1/1; border-radius:4px; border:1px solid var(--hair);
+    background:var(--paper); color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; cursor:pointer; user-select:none; touch-action:manipulation;
+    transition:transform .08s ease;
+  }
+  .m-chip.current{box-shadow:0 0 0 1.5px var(--gold) inset;}
+  .m-chip.paid{background:var(--paid); border-color:var(--paid); color:#fff;}
+  .m-chip:active{transform:scale(.88);}
+  .dashboard-heading{font:700 18px var(--serif); margin:0 0 14px;}
+
+  .member-foot{display:flex; justify-content:space-between; margin-top:8px; font-size:10.5px; color:var(--ink-soft);}
+  .member-foot .status.done{color:var(--paid); font-weight:700;}
+  .member-foot .status.none{color:var(--pending); font-weight:700;}
+
+  .empty{text-align:center; padding:40px 10px; color:var(--ink-soft); font-size:13px;}
+
+  /* ---------- calculator ---------- */
+  .calc-card{
+    background:var(--card); border:1px solid var(--hair); border-radius:6px;
+    padding:18px; box-shadow:var(--shadow); margin-bottom:16px;
+  }
+  .calc-card h2{
+    font-family:var(--serif); font-size:16px; margin:0 0 4px; font-weight:700;
+  }
+  .calc-card .sub{font-size:12px; color:var(--ink-soft); margin:0 0 16px;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:11.5px; color:var(--ink-soft); margin-bottom:5px; letter-spacing:.2px;}
+  .field .input-wrap{display:flex; align-items:center; border:1px solid var(--hair); border-radius:4px; background:var(--paper); overflow:hidden;}
+  .field .prefix{padding:0 10px; font-size:13px; color:var(--ink-soft); border-right:1px solid var(--hair); align-self:stretch; display:flex; align-items:center;}
+  .field input, .field select{
+    flex:1; border:none; background:transparent; padding:11px 10px; font-size:15px;
+    color:var(--ink); font-family:var(--sans); font-variant-numeric:tabular-nums; min-width:0;
+  }
+  .field input:focus, .field select:focus{outline:none;}
+
+  .tenure-chips{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;}
+  .tenure-chip{
+    padding:6px 12px; border:1px solid var(--hair); border-radius:20px; font-size:12px;
+    background:var(--paper); color:var(--ink-soft); cursor:pointer;
+  }
+  .tenure-chip.active{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+
+  .result-card{
+    background:var(--ink); color:var(--paper); border-radius:6px; padding:20px;
+    position:relative; overflow:hidden;
+  }
+  .result-card .stamp{
+    position:absolute; top:14px; right:14px; border:2px solid var(--gold-soft); color:var(--gold-soft);
+    border-radius:50%; width:56px; height:56px; display:flex; align-items:center; justify-content:center;
+    font-family:var(--serif); font-size:10px; font-weight:700; text-align:center; line-height:1.1;
+    transform:rotate(8deg); opacity:.85;
+  }
+  .result-row{display:flex; justify-content:space-between; align-items:baseline; padding:7px 0; border-bottom:1px solid rgba(237,230,211,.15);}
+  .result-row:last-child{border-bottom:none;}
+  .result-row .rl{font-size:12px; color:#C7D2C5;}
+  .result-row .rv{font-family:var(--serif); font-size:16px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .result-row.maturity .rv{font-size:24px; color:var(--gold-soft);}
+  .result-row.maturity .rl{font-size:12.5px; color:var(--paper);}
+
+  .note{font-size:10.5px; color:var(--ink-soft); margin-top:12px; line-height:1.5;}
+
+  /* ---------- tab bar ---------- */
+  .tabbar{
+    position:sticky; bottom:0; display:flex; background:var(--card);
+    border-top:1px solid var(--hair); z-index:20;
+  }
+  .tab{
+    flex:1; border:none; background:none; padding:12px 6px 10px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    font-family:var(--sans); font-size:11.5px; color:var(--ink-soft);
+  }
+  .tab svg{width:20px; height:20px;}
+  .tab.active{color:var(--ink); font-weight:700;}
+  .tab.active svg{stroke:var(--gold);}
+
+  ::selection{background:var(--gold-soft);}
+
+  /* ---------- v2: live sync + full account tracking ---------- */
+  .sync-pill{display:flex; align-items:center; gap:5px; font-size:9.5px; color:var(--ink-soft); margin-left:8px; white-space:nowrap;}
+  .sync-dot{width:7px; height:7px; border-radius:50%; background:#9AA79C; flex:none;}
+  .sync-pill.live .sync-dot{background:var(--paid); box-shadow:0 0 0 2px var(--paid-soft);}
+  .sync-pill.offline .sync-dot{background:#9AA79C;}
+  .sync-pill.error .sync-dot{background:var(--pending);}
+
+  .stat-row-2{display:flex; gap:10px; margin-bottom:16px;}
+  .stat.pending .num{color:var(--pending);}
+
+  .status-badge{display:inline-block; font-size:9.5px; font-weight:700; letter-spacing:.2px; padding:2px 7px; border-radius:20px; text-transform:uppercase; margin-top:3px;}
+  .status-badge.active{background:var(--paid-soft); color:var(--paid);}
+  .status-badge.discontinued{background:var(--pending-soft); color:var(--pending);}
+  .status-badge.matured{background:var(--gold-soft); color:var(--gold);}
+  .status-badge.closed{background:var(--hair); color:var(--ink-soft);}
+  .kyc-flag{display:inline-block; font-size:9px; color:var(--pending); margin-left:6px; font-weight:700;}
+
+  .member-fee-row{display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:10.5px; color:var(--pending); font-weight:600;}
+  .member-toggle{background:none; border:none; color:var(--ink-soft); font-size:10.5px; cursor:pointer; padding:6px 0 0; text-decoration:underline; text-underline-offset:2px;}
+  .member-detail{display:none; margin-top:8px; padding-top:8px; border-top:1px dashed var(--hair); font-size:11.5px; color:var(--ink-soft); line-height:1.7;}
+  .member-detail.open{display:block;}
+  .member-detail b{color:var(--ink); font-weight:700;}
+
+  .overdue-card{background:var(--pending-soft); border:1px solid var(--pending); border-radius:5px; padding:12px; margin-bottom:14px;}
+  .overdue-card h2{font:700 14px var(--serif); margin:0 0 8px; color:var(--pending);}
+  .overdue-row{display:flex; justify-content:space-between; font-size:12px; padding:4px 0; border-bottom:1px solid rgba(162,66,48,.15);}
+  .overdue-row:last-child{border-bottom:none;}
+
+  .detail-fields-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}
+  .detail-fields-grid input, .detail-fields-grid select{width:100%; border:1px solid var(--hair); border-radius:4px; background:var(--paper); color:var(--ink); padding:9px 8px; font:12.5px var(--sans); min-width:0;}
+  .detail-fields-grid label{display:block; font-size:10px; color:var(--ink-soft); margin-bottom:3px;}
+  .detail-fields-full{grid-column:1 / -1;}
+  .section-label{font-size:10.5px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; color:var(--ink-soft); margin:10px 0 2px; grid-column:1/-1;}
+</style>
+</head>
+<body>
+<section id="login-screen" class="login-screen">
+  <form id="login-form" class="login-card">
+    <h1>RD Lot Register</h1>
+    <p id="auth-description">Log in securely with your email and password.</p>
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <button id="login-mode" class="secondary-btn" type="button" style="flex:1; background:var(--ink); color:var(--paper);">Log in</button>
+      <button id="signup-mode" class="secondary-btn" type="button" style="flex:1;">Sign up</button>
+    </div>
+    <label for="agent-email">Email address</label>
+    <input id="agent-email" type="email" autocomplete="email" placeholder="agent@example.com" required>
+    <label for="agent-password" style="margin-top:12px;">Password</label>
+    <input id="agent-password" type="password" autocomplete="current-password" minlength="6" placeholder="At least 6 characters" required>
+    <label id="agent-name-label" for="agent-name" style="margin-top:12px; display:none;">Agent name</label>
+    <input id="agent-name" type="text" autocomplete="name" placeholder="Your name" style="display:none;">
+    <div id="login-error" class="login-error" role="alert"></div>
+    <button id="login-submit" class="primary-btn" type="submit">Log in</button>
+    <p style="margin:12px 0 0; font-size:10px;">Use an email you can access. Supabase may require email confirmation for new accounts.</p>
+  </form>
+</section>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">RD</div>
+      <div>
+        <h1>RD Lot Register</h1>
+        <p class="agent">Agent — <span id="active-agent">—</span></p>
+        <div class="sync-pill offline" id="sync-pill" style="margin-left:0;"><span class="sync-dot"></span><span id="sync-label">Local device only</span></div>
+      </div>
+      <button class="icon-btn" id="sign-out" type="button" aria-label="Sign out" title="Sign out">↪</button>
+      <div class="top-actions">
+        <button class="icon-btn" id="export-data" type="button" aria-label="Export payment backup" title="Export backup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+        </button>
+        <button class="icon-btn" id="export-csv" type="button" aria-label="Export spreadsheet CSV" title="Export CSV">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v16H4zM4 9h16M9 4v16M14 9v11"/></svg>
+        </button>
+        <button class="icon-btn" id="import-data" type="button" aria-label="Import JSON, CSV, or Excel data" title="Import JSON, CSV, or Excel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 15V3M7 10l5 5 5-5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+        </button>
+        <input id="backup-file" type="file" accept=".json,.csv,.xls,.xlsx,application/json,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ TRACKER VIEW ============ -->
+  <main id="dashboard-view" class="view active">
+    <h2 class="dashboard-heading">Dashboard</h2>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="num" id="stat-members">—</div>
+        <div class="lbl">Members</div>
+      </div>
+      <div class="stat paid">
+        <div class="num" id="stat-paid-this-month">—</div>
+        <div class="lbl" id="stat-paid-label">Paid this month</div>
+      </div>
+      <div class="stat gold">
+        <div class="num" id="stat-collected-year">—</div>
+        <div class="lbl">Collected this year</div>
+      </div>
+    </div>
+    <div class="stat-row-2">
+      <div class="stat pending">
+        <div class="num" id="stat-overdue">—</div>
+        <div class="lbl">Overdue accounts</div>
+      </div>
+      <div class="stat pending">
+        <div class="num" id="stat-default-fee">—</div>
+        <div class="lbl">Default fee pending</div>
+      </div>
+      <div class="stat gold">
+        <div class="num" id="stat-commission">—</div>
+        <div class="lbl" id="stat-commission-label">Commission (year)</div>
+      </div>
+    </div>
+
+    <section class="overdue-card" id="overdue-card" style="display:none;">
+      <h2>Needs attention</h2>
+      <div id="overdue-list"></div>
+    </section>
+
+    <section class="collection-card" aria-labelledby="dashboard-collection-heading">
+      <h2 id="dashboard-collection-heading">Monthly collections</h2>
+      <div id="monthly-collections" class="collection-grid"></div>
+    </section>
+  </main>
+
+  <!-- ============ RD TRACKER VIEW ============ -->
+  <main id="tracker-view" class="view">
+    <h2 class="dashboard-heading">RD Tracker</h2>
+
+    <div class="tracker-tools">
+      <span class="month-key" style="flex:1; margin:0;"><span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span></span>
+      <label>Year <select id="tracker-year" class="year-select" aria-label="Payment year"></select></label>
+    </div>
+
+    <div class="search-wrap">
+      <input id="search" type="text" placeholder="Search by name or account no." autocomplete="off">
+    </div>
+
+    <div class="member-actions"><button id="show-member-form" class="primary-btn" type="button">+ Add member</button></div>
+    <form id="member-form" class="member-form">
+      <h2>Add new member</h2>
+      <div class="entry-choice">
+        <button id="image-entry-mode" class="primary-btn" type="button">Upload account image</button>
+        <button id="manual-entry-mode" class="secondary-btn" type="button">Enter manually</button>
+      </div>
+      <div id="image-entry-panel" class="entry-panel active">
+        <p class="note" style="margin:0 0 8px;">Upload a clear image containing one or more RD accounts. All detected members will appear for review.</p>
+        <div class="ocr-row">
+          <input id="member-image" type="file" accept="image/*" aria-label="Upload RD account image" required>
+          <span id="ocr-status">No image selected.</span>
+        </div>
+        <div id="ocr-results" class="ocr-results"></div>
+      </div>
+      <div id="manual-entry-panel" class="entry-panel">
+        <p class="note" style="margin:0 0 8px;">Enter the member details below.</p>
+        <div class="member-form-grid">
+          <input id="manual-member-account" type="text" inputmode="numeric" placeholder="Account number" aria-label="Account number">
+          <input id="manual-member-name" type="text" placeholder="Member name" aria-label="Member name">
+          <input id="manual-member-amount" type="number" inputmode="numeric" min="1" step="1" placeholder="Monthly Rs." aria-label="Monthly instalment">
+        </div>
+        <div class="detail-fields-grid">
+          <div class="detail-fields-full section-label">Account terms</div>
+          <div><label for="manual-member-opening">Opening date</label><input id="manual-member-opening" type="date"></div>
+          <div><label for="manual-member-tenure">Tenure (months)</label><input id="manual-member-tenure" type="number" value="60" min="12" step="12"></div>
+          <div><label for="manual-member-rate">Interest rate %</label><input id="manual-member-rate" type="number" value="6.7" step="0.1"></div>
+          <div><label for="manual-member-po">Post office / branch</label><input id="manual-member-po" type="text" placeholder="e.g. Sadar Bazar SO"></div>
+          <div class="detail-fields-full section-label">Nominee &amp; contact</div>
+          <div><label for="manual-member-nominee">Nominee name</label><input id="manual-member-nominee" type="text"></div>
+          <div><label for="manual-member-nominee-rel">Nominee relation</label><input id="manual-member-nominee-rel" type="text" placeholder="e.g. Spouse"></div>
+          <div><label for="manual-member-mobile">Mobile number</label><input id="manual-member-mobile" type="tel" inputmode="tel"></div>
+          <div><label for="manual-member-passbook">Passbook number</label><input id="manual-member-passbook" type="text"></div>
+          <div class="detail-fields-full"><label for="manual-member-address">Address</label><input id="manual-member-address" type="text"></div>
+          <div><label for="manual-member-kyc">KYC status</label>
+            <select id="manual-member-kyc"><option value="pending">Pending</option><option value="verified">Verified</option></select>
+          </div>
+          <div><label for="manual-member-status">Account status</label>
+            <select id="manual-member-status"><option value="active">Active</option><option value="discontinued">Discontinued</option><option value="matured">Matured</option><option value="closed">Closed</option></select>
+          </div>
+        </div>
+        <textarea id="manual-member-details" rows="2" placeholder="Additional details (optional)" aria-label="Additional member details" style="margin-top:8px;"></textarea>
+      </div>
+      <div class="member-form-actions">
+        <button id="cancel-member" class="secondary-btn" type="button">Cancel</button>
+        <button class="primary-btn" type="submit">Save member</button>
+      </div>
+    </form>
+
+    <div id="member-list"></div>
+  </main>
+
+  <!-- ============ CALCULATOR VIEW ============ -->
+  <main id="calc-view" class="view">
+    <div class="calc-card">
+      <h2>RD Maturity Calculator</h2>
+      <p class="sub">Quarterly compounding, same method India Post uses.</p>
+
+      <div class="field">
+        <label for="calc-member">Fill from a member (optional)</label>
+        <div class="input-wrap">
+          <select id="calc-member"><option value="">— choose a member —</option></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="calc-amount">Monthly instalment</label>
+        <div class="input-wrap">
+          <span class="prefix">Rs.</span>
+          <input id="calc-amount" type="number" inputmode="numeric" value="1000" min="10" step="10">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="calc-rate">Interest rate (per annum)</label>
+        <div class="input-wrap">
+          <input id="calc-rate" type="number" inputmode="decimal" value="6.7" min="0" step="0.1">
+          <span class="prefix" style="border-right:none; border-left:1px solid var(--hair);">%</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="calc-tenure">Tenure</label>
+        <div class="input-wrap">
+          <input id="calc-tenure" type="number" inputmode="numeric" value="60" min="3" step="3">
+          <span class="prefix" style="border-right:none; border-left:1px solid var(--hair);">months</span>
+        </div>
+        <div class="tenure-chips">
+          <span class="tenure-chip" data-m="12">1 yr</span>
+          <span class="tenure-chip" data-m="24">2 yr</span>
+          <span class="tenure-chip" data-m="36">3 yr</span>
+          <span class="tenure-chip active" data-m="60">5 yr</span>
+          <span class="tenure-chip" data-m="120">10 yr</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="stamp">POST<br>OFFICE<br>RD</div>
+      <div class="result-row">
+        <span class="rl">Total invested</span>
+        <span class="rv" id="res-invested">Rs. 0</span>
+      </div>
+      <div class="result-row">
+        <span class="rl">Interest earned</span>
+        <span class="rv" id="res-interest">Rs. 0</span>
+      </div>
+      <div class="result-row maturity">
+        <span class="rl">Maturity value</span>
+        <span class="rv" id="res-maturity">Rs. 0</span>
+      </div>
+    </div>
+
+    <p class="note">Based on the India Post RD formula A = R × [(1+i)ⁿ − 1] / [1 − (1+i)^(−1/3)], where i is the quarterly rate and n the number of quarters. Default rate 6.7% p.a. is India Post's general-citizen RD rate — confirm the current rate before relying on this for real decisions.</p>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-view="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="tab" data-view="tracker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2V4Z"/><path d="M4 4v14a2 2 0 0 0 2 2h13"/><path d="M8 9h7M8 13h5"/></svg>
+      Tracker
+    </button>
+    <button class="tab" data-view="calc">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M8 7h8M8 11h1M11.5 11h1M15 11h1M8 14.5h1M11.5 14.5h1M15 14.5h1M8 18h1M11.5 18h1M15 18h1"/></svg>
+      Calculator
+    </button>
+  </nav>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------
+   DATA — the 44 RD lot accounts
+--------------------------------------------------------------------- */
+const MEMBERS = [
+  ["020002027834","SUNITA BHUPENDRA SHARAMA",2000],
+  ["020025148434","VIJAY SINGH",500],
+  ["020025148998","RUCHI",500],
+  ["020025149263","SAKUNTALA DEVI",500],
+  ["020045123713","SHASHIBALA UNIYAL",1000],
+  ["020045124396","SUDHA NEGI",500],
+  ["020055538833","VIJAY SINGH KAHROLA",2000],
+  ["020055539806","SATYA PRASAD BHATT",4000],
+  ["020055539900","SHIV DEI",1000],
+  ["020055540049","SHIVANG BHATT",1000],
+  ["020055540667","VIMLA",500],
+  ["020076347570","MANISH BAHUGUNA",1000],
+  ["020076348292","MOHAMMAD MAKDUM",3000],
+  ["020082408360","CHANDRESHWARI DEVI",1000],
+  ["020082411065","ARNAV BHANDARI",500],
+  ["020090192501","MADAN LAL KOTHIYAL",5000],
+  ["020090193504","PRADEEP BAHUGUNA",4000],
+  ["020116434854","MANISH SAKLANI",5000],
+  ["020116436252","PRADEEP BAHUGUNA",1000],
+  ["020122292913","MANORAMA",5000],
+  ["020122294153","JAYANTI PRASAD BHATT",500],
+  ["020123458317","SARTHAK UNIYAL",1000],
+  ["020123458965","SEAJAL UNIYAL",1000],
+  ["020125714353","BACHU LAL",2000],
+  ["020125715571","MANJU",2000],
+  ["020125716226","LAXMI PANWAR",2000],
+  ["020134984004","SHAILA BHATT",4000],
+  ["020148051443","DHANVEER SINGH",5000],
+  ["020148060085","SMT VANDANA KOTHIYAL",2000],
+  ["020158428713","KADAMBARI SEMWAL",1000],
+  ["020170922307","MAHAVIR SINGH",5000],
+  ["020170923010","S SUSHILA DANGWAL",500],
+  ["020175013372","ATUL SINGH",1000],
+  ["020175014221","PARMA NAND",2000],
+  ["020175014288","RAJENDRA PRASAD",1000],
+  ["020179491742","AARIKETSEMWAL",3000],
+  ["020179492452","SHOOR BIR SINGH",2000],
+  ["020179493398","KAMLA",2500],
+  ["020179494056","PRADEEP BAHUGUNA",2000],
+  ["020221550600","ANANT RAM UNIYAL",4000],
+  ["3432399872","ANITA DOBHAL",500],
+  ["4756758215","MANORAMA",1000],
+  ["4930617475","ANUBHAV BAHUGUNA",500],
+  ["4930621250","SHAILA BHATT",10000],
+].map(([acc,name,amt]) => normalizeMember({acc,name,amt}));
+
+const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const CURRENT_MONTH = new Date().getMonth(); // 0-11
+const CURRENT_YEAR = new Date().getFullYear();
+const STORAGE_KEY = "rd-tracker-ticks-v1";
+const MEMBERS_STORAGE_KEY = "rd-tracker-members-v1";
+const DEFAULT_FEE_PER_100 = 1;       // Rs.1 default fee per Rs.100 of instalment, per missed month (India Post rule)
+const DISCONTINUE_AFTER_DEFAULTS = 4; // account becomes "discontinued" after 4 consecutive missed months
+
+let activeAgentId = "";
+let agentStorageKey = "";
+let cloudMode = false;
+let supabaseClient = null;
+let cloudMemberIds = {};
+let cloudCommissionRate = 4.0;
+let realtimeChannel = null;
+let selectedYear = CURRENT_YEAR;
+let ticks = {}; // { accountNo: { year: [bool x12] } }
+
+function fmtMoney(n){
+  n = Math.round(n);
+  return "Rs. " + n.toLocaleString("en-IN");
+}
+
+/* Fill in every account-tracking field with a safe default so old records
+   (and the demo seed list above) work fine alongside the new full schema. */
+function normalizeMember(raw){
+  return {
+    acc: String(raw.acc || ""),
+    name: String(raw.name || ""),
+    amt: Number(raw.amt) || 0,
+    details: String(raw.details || ""),
+    openingDate: raw.openingDate || "",
+    tenureMonths: Number(raw.tenureMonths) || 60,
+    interestRate: Number.isFinite(Number(raw.interestRate)) ? Number(raw.interestRate) : 6.7,
+    maturityDate: raw.maturityDate || "",
+    nomineeName: String(raw.nomineeName || ""),
+    nomineeRelation: String(raw.nomineeRelation || ""),
+    mobile: String(raw.mobile || ""),
+    address: String(raw.address || ""),
+    postOffice: String(raw.postOffice || ""),
+    passbook: String(raw.passbook || ""),
+    kycStatus: raw.kycStatus === "verified" ? "verified" : "pending",
+    accountStatus: ["active","discontinued","matured","closed"].includes(raw.accountStatus) ? raw.accountStatus : "active",
+  };
+}
+
+function computeMaturityDate(member){
+  if (member.maturityDate) return member.maturityDate;
+  if (!member.openingDate) return "";
+  const d = new Date(member.openingDate);
+  if (Number.isNaN(d.getTime())) return "";
+  d.setMonth(d.getMonth() + (Number(member.tenureMonths) || 60));
+  return d.toISOString().slice(0, 10);
+}
+
+/* Consecutive missed months up to (and excluding) the current month of the
+   current year — this is what India Post treats as "in default". */
+function consecutiveDefaults(member){
+  const t = getYearTicks(member.acc, CURRENT_YEAR);
+  let streak = 0;
+  for (let m = CURRENT_MONTH - 1; m >= 0; m--) {
+    if (t[m]) break;
+    streak++;
+  }
+  return streak;
+}
+
+function computeDefaultFee(member){
+  const streak = consecutiveDefaults(member);
+  if (streak === 0) return 0;
+  const feePerMonth = Math.ceil((Number(member.amt) || 0) / 100) * DEFAULT_FEE_PER_100;
+  return feePerMonth * streak;
+}
+
+function computeAccountStatus(member){
+  if (member.accountStatus === "closed") return "closed";
+  const maturity = computeMaturityDate(member);
+  if (maturity && new Date(maturity) <= new Date()) return "matured";
+  if (consecutiveDefaults(member) >= DISCONTINUE_AFTER_DEFAULTS) return "discontinued";
+  return "active";
+}
+
+function configureCloud(){
+  const config = window.RD_SUPABASE_CONFIG || {};
+  if (!config.url || !config.anonKey || !window.supabase?.createClient) return false;
+  supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+  cloudMode = true;
+  return true;
+}
+
+/* ---------------------------------------------------------------------
+   PERSISTENCE
+--------------------------------------------------------------------- */
+const CLOUD_MEMBER_COLUMNS = "id, account_number, name, monthly_amount, interest_rate, tenure_months, opening_date, maturity_date, nominee_name, nominee_relation, mobile_number, address, post_office, passbook_number, kyc_status, account_status, details, month_paid_upto, next_due_date";
+
+function cloudRowToMember(row){
+  return normalizeMember({
+    acc: row.account_number, name: row.name, amt: row.monthly_amount, details: row.details,
+    openingDate: row.opening_date || "", tenureMonths: row.tenure_months, interestRate: row.interest_rate,
+    maturityDate: row.maturity_date || "", nomineeName: row.nominee_name, nomineeRelation: row.nominee_relation,
+    mobile: row.mobile_number, address: row.address, postOffice: row.post_office, passbook: row.passbook_number,
+    kycStatus: row.kyc_status, accountStatus: row.account_status,
+  });
+}
+
+function memberToCloudRow(record){
+  return {
+    account_number: record.acc, name: record.name, monthly_amount: record.amt, details: record.details || "",
+    interest_rate: record.interestRate ?? 6.7, tenure_months: record.tenureMonths ?? 60,
+    opening_date: record.openingDate || null, maturity_date: computeMaturityDate(record) || null,
+    nominee_name: record.nomineeName || "", nominee_relation: record.nomineeRelation || "",
+    mobile_number: record.mobile || "", address: record.address || "", post_office: record.postOffice || "",
+    passbook_number: record.passbook || "", kyc_status: record.kycStatus || "pending", account_status: record.accountStatus || "active",
+  };
+}
+
+async function loadMembers(){
+  if (cloudMode) {
+    const {data, error} = await supabaseClient.from("members").select(CLOUD_MEMBER_COLUMNS).order("name");
+    if (error) throw error;
+    MEMBERS.length = 0;
+    cloudMemberIds = {};
+    (data || []).forEach(row => {
+      const normalized = cloudRowToMember(row);
+      MEMBERS.push(normalized);
+      cloudMemberIds[normalized.acc] = row.id;
+    });
+    return;
+  }
+  try{
+    const value = window.localStorage.getItem(agentStorageKey + MEMBERS_STORAGE_KEY);
+    if (!value) return;
+    const savedMembers = JSON.parse(value);
+    if (!Array.isArray(savedMembers)) return;
+    savedMembers.forEach(member => {
+      if (!member || !member.acc || !member.name || !Number.isFinite(Number(member.amt))) return;
+      const existing = MEMBERS.findIndex(item => item.acc === String(member.acc));
+      const cleanMember = normalizeMember(member);
+      if (existing >= 0) MEMBERS[existing] = cleanMember;
+      else MEMBERS.push(cleanMember);
+    });
+  }catch(e){ /* use built-in members when saved data is unavailable */ }
+}
+
+async function saveMembers(){
+  if (cloudMode) return;
+  try{ window.localStorage.setItem(agentStorageKey + MEMBERS_STORAGE_KEY, JSON.stringify(MEMBERS)); }
+  catch(e){ /* keep working in-memory */ }
+}
+
+async function loadTicks(){
+  if (cloudMode) {
+    ticks = {};
+    MEMBERS.forEach(member => { ticks[member.acc] = {}; });
+    const {data, error} = await supabaseClient.from("payments").select("member_id, payment_year, payment_month, paid");
+    if (error) throw error;
+    (data || []).forEach(payment => {
+      const account = Object.keys(cloudMemberIds).find(acc => cloudMemberIds[acc] === payment.member_id);
+      if (!account) return;
+      getYearTicks(account, payment.payment_year)[payment.payment_month] = Boolean(payment.paid);
+    });
+    MEMBERS.forEach(member => getYearTicks(member.acc, CURRENT_YEAR));
+    return;
+  }
+  const normalise = (value) => {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  };
+  try{
+    if (window.storage && typeof window.storage.get === "function") {
+      const r = await window.storage.get(agentStorageKey + STORAGE_KEY);
+      if (r && r.value) ticks = normalise(r.value);
+    } else {
+      const value = window.localStorage.getItem(agentStorageKey + STORAGE_KEY);
+      if (value) ticks = normalise(value);
+    }
+  }catch(e){
+    ticks = {};
+  }
+  MEMBERS.forEach(m => {
+    if (Array.isArray(ticks[m.acc])) ticks[m.acc] = {[CURRENT_YEAR]: ticks[m.acc]};
+    if (!ticks[m.acc] || typeof ticks[m.acc] !== "object") ticks[m.acc] = {};
+    Object.keys(ticks[m.acc]).forEach(year => {
+      ticks[m.acc][year] = Array.from({length: 12}, (_, i) => Boolean(ticks[m.acc][year]?.[i]));
+    });
+    if (!ticks[m.acc][CURRENT_YEAR]) ticks[m.acc][CURRENT_YEAR] = new Array(12).fill(false);
+  });
+}
+
+function getYearTicks(accountNo, year=selectedYear){
+  if (!ticks[accountNo]) ticks[accountNo] = {};
+  if (!ticks[accountNo][year]) ticks[accountNo][year] = new Array(12).fill(false);
+  return ticks[accountNo][year];
+}
+
+async function saveTicks(){
+  if (cloudMode) return;
+  try{
+    const value = JSON.stringify(ticks);
+    if (window.storage && typeof window.storage.set === "function") {
+      await window.storage.set(agentStorageKey + STORAGE_KEY, value);
+    } else {
+      window.localStorage.setItem(agentStorageKey + STORAGE_KEY, value);
+    }
+  }catch(e){ /* fail silently, keep working in-memory */ }
+}
+
+async function savePayment(accountNo, year, month, paid){
+  if (!cloudMode) return;
+  const memberId = cloudMemberIds[accountNo];
+  if (!memberId) return;
+  const {error} = await supabaseClient.from("payments").upsert({
+    member_id: memberId, payment_year: year, payment_month: month, paid,
+    paid_date: paid ? new Date().toISOString().slice(0, 10) : null,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) window.alert("Payment could not be saved online.");
+}
+
+/* ---------------------------------------------------------------------
+   REAL-TIME SYNC — any device signed in as this agent sees changes live.
+   Row Level Security still applies to the realtime feed, so an agent only
+   ever receives their own accounts, never another agent's.
+--------------------------------------------------------------------- */
+function setSyncStatus(state, label){
+  const pill = document.getElementById("sync-pill");
+  if (!pill) return;
+  pill.className = "sync-pill " + state;
+  document.getElementById("sync-label").textContent = label;
+}
+
+async function refreshFromCloudEvent(){
+  await loadMembers();
+  await loadTicks();
+  populateCalcMemberSelect();
+  renderMembers(document.getElementById("search").value);
+  renderStats();
+}
+
+function setupRealtime(){
+  if (!cloudMode || !cloudProfileId) { setSyncStatus("offline", "Local device only"); return; }
+  if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+  setSyncStatus("offline", "Connecting...");
+  realtimeChannel = supabaseClient
+    .channel("rd-agent-" + cloudProfileId)
+    .on("postgres_changes", {event: "*", schema: "public", table: "members"}, () => { refreshFromCloudEvent(); })
+    .on("postgres_changes", {event: "*", schema: "public", table: "payments"}, () => { refreshFromCloudEvent(); })
+    .subscribe(status => {
+      if (status === "SUBSCRIBED") setSyncStatus("live", "Live — synced across devices");
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setSyncStatus("error", "Sync interrupted — retrying");
+      else if (status === "CLOSED") setSyncStatus("offline", "Not connected");
+    });
+}
+
+async function deleteMember(member){
+  if (!window.confirm(`Delete ${member.name} (${member.acc}) and all of its payment records?`)) return;
+  if (cloudMode) {
+    const memberId = cloudMemberIds[member.acc];
+    const {error} = await supabaseClient.from("members").delete().eq("id", memberId);
+    if (error) {
+      window.alert("Member could not be deleted online.");
+      return;
+    }
+    delete cloudMemberIds[member.acc];
+  }
+  const index = MEMBERS.findIndex(item => item.acc === member.acc);
+  if (index >= 0) MEMBERS.splice(index, 1);
+  delete ticks[member.acc];
+  await saveMembers();
+  await saveTicks();
+  populateCalcMemberSelect();
+  renderMembers(document.getElementById("search").value);
+  renderStats();
+}
+
+/* ---------------------------------------------------------------------
+   TRACKER RENDER
+--------------------------------------------------------------------- */
+function renderMembers(filter=""){
+  const list = document.getElementById("member-list");
+  list.innerHTML = "";
+  const f = filter.trim().toLowerCase();
+  const filtered = MEMBERS.filter(m =>
+    !f || m.name.toLowerCase().includes(f) || m.acc.includes(f)
+  );
+
+  if (filtered.length === 0){
+    list.innerHTML = '<div class="empty">No member matches that search.</div>';
+    return;
+  }
+
+  filtered.forEach(m => {
+    const t = getYearTicks(m.acc);
+    const paidCount = t.filter(Boolean).length;
+    const status = computeAccountStatus(m);
+    const fee = computeDefaultFee(m);
+    const maturity = computeMaturityDate(m);
+
+    const card = document.createElement("div");
+    card.className = "member";
+
+    const head = document.createElement("div");
+    head.className = "member-head";
+    head.innerHTML = `
+      <div>
+        <div class="member-name">${m.name}${m.kycStatus === "pending" ? '<span class="kyc-flag">KYC pending</span>' : ""}</div>
+        <div class="member-acc">A/C ${m.acc}</div>
+        ${m.details ? `<div class="member-acc-detail">${m.details}</div>` : ""}
+        <span class="status-badge ${status}">${status}</span>
+      </div>
+      <div>
+        <button class="member-delete" type="button" aria-label="Delete ${m.name}" title="Delete member">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+        </button>
+        <span class="member-amt">${fmtMoney(m.amt)}<small>/month</small></span>
+      </div>
+    `;
+    card.appendChild(head);
+    head.querySelector(".member-delete").addEventListener("click", () => deleteMember(m));
+
+    const grid = document.createElement("div");
+    grid.className = "months";
+    MONTH_LABELS.forEach((lbl, i) => {
+      const chip = document.createElement("div");
+      chip.className = "m-chip" + (t[i] ? " paid" : "") + (selectedYear === CURRENT_YEAR && i === CURRENT_MONTH ? " current" : "");
+      chip.textContent = lbl[0];
+      chip.addEventListener("click", async () => {
+        t[i] = !t[i];
+        await savePayment(m.acc, selectedYear, i, t[i]);
+        saveTicks();
+        renderMembers(document.getElementById("search").value);
+        renderStats();
+      });
+      grid.appendChild(chip);
+    });
+    card.appendChild(grid);
+
+    const foot = document.createElement("div");
+    foot.className = "member-foot";
+    let statusText, statusClass;
+    if (paidCount === 12){ statusText = "Completed"; statusClass = "done"; }
+    else if (paidCount === 0){ statusText = "Not started"; statusClass = "none"; }
+    else { statusText = paidCount + " of 12 paid"; statusClass = ""; }
+    foot.innerHTML = `<span class="status ${statusClass}">${statusText}</span><span>${fmtMoney(paidCount*m.amt)} collected</span>`;
+    card.appendChild(foot);
+
+    if (fee > 0){
+      const feeRow = document.createElement("div");
+      feeRow.className = "member-fee-row";
+      feeRow.innerHTML = `<span>Default fee owed (${consecutiveDefaults(m)} mo.)</span><span>${fmtMoney(fee)}</span>`;
+      card.appendChild(feeRow);
+    }
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "member-toggle";
+    toggle.textContent = "Account details \u2304";
+    const detail = document.createElement("div");
+    detail.className = "member-detail";
+    detail.innerHTML = `
+      <div><b>Opening date:</b> ${m.openingDate || "\u2014"} &nbsp; <b>Maturity date:</b> ${maturity || "\u2014"}</div>
+      <div><b>Tenure:</b> ${m.tenureMonths} months &nbsp; <b>Interest:</b> ${m.interestRate}% p.a.</div>
+      <div><b>Post office:</b> ${m.postOffice || "\u2014"} &nbsp; <b>Passbook no.:</b> ${m.passbook || "\u2014"}</div>
+      <div><b>Nominee:</b> ${m.nomineeName || "\u2014"} ${m.nomineeRelation ? "(" + m.nomineeRelation + ")" : ""}</div>
+      <div><b>Mobile:</b> ${m.mobile || "\u2014"}</div>
+      <div><b>Address:</b> ${m.address || "\u2014"}</div>
+    `;
+    toggle.addEventListener("click", () => {
+      detail.classList.toggle("open");
+      toggle.textContent = detail.classList.contains("open") ? "Account details \u2303" : "Account details \u2304";
+    });
+    card.appendChild(toggle);
+    card.appendChild(detail);
+
+    list.appendChild(card);
+  });
+}
+
+function renderStats(){
+  document.getElementById("stat-members").textContent = MEMBERS.length;
+
+  const paidThisMonth = MEMBERS.filter(m => getYearTicks(m.acc)[CURRENT_MONTH]).length;
+  document.getElementById("stat-paid-this-month").textContent = paidThisMonth + "/" + MEMBERS.length;
+  document.getElementById("stat-paid-label").textContent = "Paid in " + MONTH_LABELS[CURRENT_MONTH] + " " + selectedYear;
+
+  let collectedYear = 0;
+  MEMBERS.forEach(m => {
+    const paidCount = getYearTicks(m.acc).filter(Boolean).length;
+    collectedYear += paidCount * m.amt;
+  });
+  document.getElementById("stat-collected-year").textContent = fmtMoney(collectedYear);
+
+  const commissionRate = cloudMode ? cloudCommissionRate : 4.0;
+  document.getElementById("stat-commission").textContent = fmtMoney(collectedYear * commissionRate / 100);
+  document.getElementById("stat-commission-label").textContent = `Commission (year, @${commissionRate}%)`;
+
+  let overdueCount = 0, feePending = 0;
+  const overdueList = [];
+  MEMBERS.forEach(m => {
+    const streak = consecutiveDefaults(m);
+    const fee = computeDefaultFee(m);
+    if (streak > 0 && computeAccountStatus(m) !== "matured") {
+      overdueCount++;
+      feePending += fee;
+      overdueList.push({m, streak, fee});
+    }
+  });
+  document.getElementById("stat-overdue").textContent = overdueCount;
+  document.getElementById("stat-default-fee").textContent = fmtMoney(feePending);
+  const overdueCard = document.getElementById("overdue-card");
+  const overdueListEl = document.getElementById("overdue-list");
+  if (overdueList.length){
+    overdueCard.style.display = "block";
+    overdueList.sort((a,b) => b.streak - a.streak);
+    overdueListEl.innerHTML = overdueList.slice(0, 8).map(({m, streak, fee}) =>
+      `<div class="overdue-row"><span>${m.name} (${m.acc})</span><span>${streak} mo. missed \u00b7 ${fmtMoney(fee)} fee</span></div>`
+    ).join("") + (overdueList.length > 8 ? `<div class="overdue-row"><span>+ ${overdueList.length - 8} more</span><span></span></div>` : "");
+  } else {
+    overdueCard.style.display = "none";
+    overdueListEl.innerHTML = "";
+  }
+
+  const monthlyTotals = MONTH_LABELS.map((_, month) => MEMBERS.reduce((total, m) =>
+    total + (getYearTicks(m.acc)[month] ? m.amt : 0), 0));
+  document.getElementById("monthly-collections").innerHTML = monthlyTotals.map((total, month) =>
+    `<div class="collection-month"><span class="month-name">${MONTH_LABELS[month]}</span><span class="month-total">${fmtMoney(total)}</span></div>`
+  ).join("");
+}
+
+/* ---------------------------------------------------------------------
+   CALCULATOR
+--------------------------------------------------------------------- */
+function calcMaturity(monthly, annualRatePct, tenureMonths){
+  const n = tenureMonths / 3;           // number of quarters
+  const i = annualRatePct / 400;        // quarterly rate as decimal
+  if (i === 0) return monthly * tenureMonths;
+  const maturity = monthly * (Math.pow(1+i, n) - 1) / (1 - Math.pow(1+i, -1/3));
+  return maturity;
+}
+
+function renderCalc(){
+  const amount = parseFloat(document.getElementById("calc-amount").value) || 0;
+  const rate = parseFloat(document.getElementById("calc-rate").value) || 0;
+  const months = parseInt(document.getElementById("calc-tenure").value) || 0;
+
+  const invested = amount * months;
+  const maturity = months > 0 ? calcMaturity(amount, rate, months) : 0;
+  const interest = Math.max(maturity - invested, 0);
+
+  document.getElementById("res-invested").textContent = fmtMoney(invested);
+  document.getElementById("res-interest").textContent = fmtMoney(interest);
+  document.getElementById("res-maturity").textContent = fmtMoney(maturity);
+}
+
+function populateCalcMemberSelect(){
+  const sel = document.getElementById("calc-member");
+  sel.innerHTML = '<option value="">— choose a member —</option>';
+  MEMBERS.forEach((m, idx) => {
+    const opt = document.createElement("option");
+    opt.value = idx;
+    opt.textContent = `${m.name} (${fmtMoney(m.amt)}/mo)`;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change", () => {
+    if (sel.value === "") return;
+    document.getElementById("calc-amount").value = MEMBERS[sel.value].amt;
+    renderCalc();
+  });
+}
+
+function cleanOcrName(value){
+  return value
+    .replace(/\b(?:CR|SEP)\b/gi, " ")
+    .replace(/^\s*[ASW](?:\s+|[.:_-]+)+/i, "")
+    .replace(/[^a-z .'-]/gi, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^\s*[.'-]+|[.'-]+\s*$/g, "")
+    .trim()
+    .toUpperCase();
+}
+
+function parseDenomination(words){
+  const value = words.join(" ").replace(/,/g, " ");
+  const marked = value.match(/\b(\d+(?:\.\d{1,2})?)\s*(?:cr\.?|rs\.?|inr)\b/i);
+  const match = marked || value.match(/\b(\d+(?:\.\d{1,2})?)\b/);
+  const amount = match ? Number(match[1]) : 0;
+  return Number.isFinite(amount) && amount > 0 ? amount : "";
+}
+
+function prepareOcrUpload(file){
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(file);
+    image.onload = () => {
+      const maxDimension = 2200;
+      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(blob => blob ? resolve(new File([blob], "rd-account.jpg", {type: "image/jpeg"})) : reject(new Error("Image preparation failed.")), "image/jpeg", .86);
+    };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image could not be loaded.")); };
+    image.src = url;
+  });
+}
+
+function parseOcrTable(tsv, structuredWords=[]){
+  if (!tsv && !structuredWords.length) return [];
+  const words = [];
+  if (structuredWords.length) {
+    structuredWords.forEach(word => {
+      if (!word.text || Number(word.confidence) < 20) return;
+      words.push({
+        key: `${word.block}-${word.paragraph}-${word.line}`,
+        text: word.text.trim(),
+        left: Number(word.left),
+        width: Number(word.width)
+      });
+    });
+  } else tsv.split(/\r?\n/).slice(1).forEach(line => {
+    const cells = line.split("\t");
+    if (cells.length < 12) return;
+    const blockNumber = cells[2];
+    const paragraphNumber = cells[3];
+    const lineNumber = cells[4];
+    const text = cells[11].trim();
+    const confidence = Number(cells[10]);
+    if (!text || confidence < 20) return;
+    words.push({
+      key: `${blockNumber}-${paragraphNumber}-${lineNumber}`,
+      text,
+      left: Number(cells[6]),
+      width: Number(cells[8])
+    });
+  });
+  if (!words.length) return [];
+  const groupedRows = new Map();
+  words.forEach(word => {
+    if (!groupedRows.has(word.key)) groupedRows.set(word.key, []);
+    groupedRows.get(word.key).push(word);
+  });
+  const visualRows = [...groupedRows.values()]
+    .map(rowWords => rowWords.sort((first, second) => first.left - second.left));
+
+  const header = visualRows.find(rowWords => {
+    const content = rowWords.map(word => word.text.toLowerCase()).join(" ");
+    return /account|a\s*\/?\s*c/.test(content) && /denomination/.test(content);
+  });
+  if (!header) return [];
+
+  const accountHeader = header.find(word => /account|a\s*\/?\s*c/.test(word.text.toLowerCase()));
+  const nameHeader = header.find(word => /name/.test(word.text.toLowerCase()));
+  const denominationHeader = header.find(word => /denomination/.test(word.text.toLowerCase()));
+  const removedColumnsStart = header.find(word => /^(month|next|due|date)$/i.test(word.text));
+  if (!accountHeader || !nameHeader || !denominationHeader) return [];
+
+  const columns = [
+    {key: "account", x: accountHeader.left + accountHeader.width / 2},
+    {key: "name", x: nameHeader.left + nameHeader.width / 2},
+    {key: "amount", x: denominationHeader.left + denominationHeader.width / 2}
+  ].sort((first, second) => first.x - second.x);
+
+  const boundaries = columns.map((column, index) => ({
+    ...column,
+    start: index === 0 ? -Infinity : (columns[index - 1].x + column.x) / 2,
+    end: index === columns.length - 1 ? Infinity : (column.x + columns[index + 1].x) / 2
+  }));
+  if (removedColumnsStart) {
+    boundaries[boundaries.length - 1].end =
+      (denominationHeader.left + denominationHeader.width / 2 + removedColumnsStart.left) / 2;
+  }
+
+  const headerIndex = visualRows.indexOf(header);
+  return visualRows.slice(headerIndex + 1).map(rowWords => {
+    const fields = {account: [], name: [], amount: []};
+    rowWords.forEach(word => {
+      const center = word.left + word.width / 2;
+      const column = boundaries.find(item => center >= item.start && center < item.end);
+      if (column) fields[column.key].push(word.text);
+    });
+    const markedDenomination = rowWords
+      .map((word, index) => `${word.text} ${rowWords[index + 1]?.text || ""}`)
+      .find(value => /\d[\d,]*(?:\.\d+)?\s*cr\.?\b/i.test(value));
+    if (markedDenomination) fields.amount = [markedDenomination];
+    const account = fields.account.join("").replace(/[^\d]/g, "");
+    const amount = parseDenomination(fields.amount);
+    if (account.length < 8 || account.length > 20) return null;
+    const name = cleanOcrName(fields.name
+      .filter(value => /[a-z]/i.test(value) && !/^(account|name|denomination|amount|details?|cr|sep)$/i.test(value))
+      .join(" ")
+      .split(/\b(?:CR|SEP)\b/i)[0]);
+    return {acc: account, name, amt: amount, details: ""};
+  }).filter(member => member && member.name && Number.isFinite(member.amt) && member.amt > 0);
+}
+
+function setupMemberForm(){
+  const form = document.getElementById("member-form");
+  const openButton = document.getElementById("show-member-form");
+  const imageInput = document.getElementById("member-image");
+  let entryMode = "image";
+  const imagePanel = document.getElementById("image-entry-panel");
+  const manualPanel = document.getElementById("manual-entry-panel");
+  const imageButton = document.getElementById("image-entry-mode");
+  const manualButton = document.getElementById("manual-entry-mode");
+  let extractedMembers = [];
+  const setEntryMode = mode => {
+    entryMode = mode;
+    const imageMode = mode === "image";
+    imagePanel.classList.toggle("active", imageMode);
+    manualPanel.classList.toggle("active", !imageMode);
+    imageButton.className = imageMode ? "primary-btn" : "secondary-btn";
+    manualButton.className = imageMode ? "secondary-btn" : "primary-btn";
+    imageInput.required = imageMode;
+  };
+  const closeForm = () => { form.classList.remove("open"); form.reset(); extractedMembers = []; document.getElementById("ocr-results").classList.remove("visible"); document.getElementById("ocr-results").innerHTML = ""; setEntryMode("image"); document.getElementById("ocr-status").textContent = "No image selected."; };
+  openButton.addEventListener("click", () => {
+    form.classList.toggle("open");
+    if (form.classList.contains("open")) imageInput.focus();
+  });
+  imageButton.addEventListener("click", () => setEntryMode("image"));
+  manualButton.addEventListener("click", () => setEntryMode("manual"));
+  document.getElementById("cancel-member").addEventListener("click", closeForm);
+  const renderOcrResults = () => {
+    const results = document.getElementById("ocr-results");
+    results.classList.toggle("visible", extractedMembers.length > 0);
+    results.innerHTML = extractedMembers.length ? `<h3>${extractedMembers.length} member${extractedMembers.length === 1 ? "" : "s"} detected - review before saving</h3>` + extractedMembers.map((member, index) => `
+      <div class="ocr-member" data-index="${index}">
+        <div class="ocr-member-grid">
+          <input data-field="acc" value="${member.acc}" placeholder="Account number" aria-label="Detected account number">
+          <input data-field="name" value="${cleanOcrName(member.name)}" placeholder="Member name" aria-label="Detected member name">
+          <input data-field="amt" type="number" min="1" value="${Number.isFinite(member.amt) && member.amt > 0 ? member.amt : ""}" placeholder="Monthly Rs." aria-label="Detected monthly instalment">
+        </div>
+      </div>`).join("") : "";
+  };
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (entryMode === "image" && !imageInput.files[0]) {
+      window.alert("Upload the RD account image first.");
+      return;
+    }
+    let records;
+    if (entryMode === "image") {
+      records = [...document.querySelectorAll(".ocr-member")].map(row => normalizeMember({
+        acc: row.querySelector('[data-field="acc"]').value.trim(),
+        name: row.querySelector('[data-field="name"]').value.trim().toUpperCase(),
+        amt: Number(row.querySelector('[data-field="amt"]').value),
+        details: ""
+      }));
+    } else {
+      records = [normalizeMember({
+        acc: document.getElementById("manual-member-account").value.trim(),
+        name: document.getElementById("manual-member-name").value.trim().toUpperCase(),
+        amt: Number(document.getElementById("manual-member-amount").value),
+        details: document.getElementById("manual-member-details").value.trim(),
+        openingDate: document.getElementById("manual-member-opening").value,
+        tenureMonths: document.getElementById("manual-member-tenure").value,
+        interestRate: document.getElementById("manual-member-rate").value,
+        nomineeName: document.getElementById("manual-member-nominee").value.trim(),
+        nomineeRelation: document.getElementById("manual-member-nominee-rel").value.trim(),
+        mobile: document.getElementById("manual-member-mobile").value.trim(),
+        address: document.getElementById("manual-member-address").value.trim(),
+        postOffice: document.getElementById("manual-member-po").value.trim(),
+        passbook: document.getElementById("manual-member-passbook").value.trim(),
+        kycStatus: document.getElementById("manual-member-kyc").value,
+        accountStatus: document.getElementById("manual-member-status").value,
+      })];
+    }
+    records = records.filter(record => record.acc && record.name && Number.isFinite(record.amt) && record.amt > 0);
+    if (!records.length) {
+      window.alert("Review the extracted details and complete at least one member.");
+      return;
+    }
+    const duplicate = records.find(record => MEMBERS.some(member => member.acc === record.acc) || records.filter(item => item.acc === record.acc).length > 1);
+    if (duplicate) {
+      window.alert(`Account number ${duplicate.acc} already exists or is duplicated.`);
+      return;
+    }
+    for (const record of records) {
+      if (cloudMode) {
+        const {data, error} = await supabaseClient.from("members").insert({agent_id: cloudProfileId, ...memberToCloudRow(record)}).select("id").single();
+        if (error) {
+          window.alert("A member could not be saved online.");
+          return;
+        }
+        cloudMemberIds[record.acc] = data.id;
+      }
+      MEMBERS.push(record);
+      getYearTicks(record.acc);
+    }
+    await saveMembers();
+    await saveTicks();
+    populateCalcMemberSelect();
+    renderMembers(document.getElementById("search").value);
+    renderStats();
+    extractedMembers = [];
+    closeForm();
+  });
+
+  imageInput.addEventListener("change", async event => {
+    const image = event.target.files[0];
+    if (!image) return;
+    const status = document.getElementById("ocr-status");
+    const saveButton = form.querySelector('button[type="submit"]');
+    saveButton.disabled = true;
+    saveButton.textContent = "Reading...";
+    status.textContent = "Uploading image securely...";
+    try{
+      const body = new FormData();
+      status.textContent = "Preparing image...";
+      const preparedImage = await prepareOcrUpload(image);
+      body.append("image", preparedImage);
+      const session = cloudMode ? (await supabaseClient.auth.getSession()).data.session : null;
+      const headers = session?.access_token ? {Authorization: `Bearer ${session.access_token}`} : {};
+      status.textContent = "Reading image on the server...";
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+      const response = await fetch(window.RD_SUPABASE_CONFIG?.ocrUrl || "/api/ocr", {method: "POST", headers, body, signal: controller.signal});
+      clearTimeout(timeout);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Server OCR failed.");
+      const text = payload.text || "";
+      extractedMembers = parseOcrTable(payload.tsv, payload.words || []);
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      const accountLabel = /\b(?:account\s*(?:no\.?|number)\b|a\s*\/\s*c\s*(?:no\.?)?\b)\s*[:#-]?/i;
+      const nameLabel = /\baccount\s*name\b\s*[:#-]?/i;
+      const denominationLabel = /denomination\s*[:#-]?/i;
+      const tableHeader = accountLabel.test(text) && nameLabel.test(text) && denominationLabel.test(text);
+      const valueAfterLabel = (line, label, numeric=false) => {
+        const match = line.match(label);
+        if (!match) return "";
+        const value = line.slice(match.index + match[0].length).trim();
+        if (numeric) {
+          const number = value.match(/\d[\d,]*(?:\.\d+)?/);
+          return number ? Number(number[0].replace(/,/g, "")) : "";
+        }
+        return value.replace(/^[:#-]\s*/, "").trim();
+      };
+      const nextValue = (start, end, label, numeric=false) => {
+        for (let index = start; index < end; index++) {
+          const inline = valueAfterLabel(lines[index], label, numeric);
+          if (inline !== "") return inline;
+          if (label.test(lines[index]) && index + 1 < end) {
+            const following = lines[index + 1].trim();
+            if (numeric) {
+              const number = following.match(/^\d[\d,]*(?:\.\d+)?$/);
+              if (number) return Number(number[0].replace(/,/g, ""));
+            } else if (following && !accountLabel.test(following) && !nameLabel.test(following) && !denominationLabel.test(following)) {
+              return following;
+            }
+          }
+        }
+        return "";
+      };
+      if (!extractedMembers.length) {
+        const accountRows = lines.map((line, index) => ({line, index})).filter(item => accountLabel.test(item.line));
+        extractedMembers = accountRows.map((row, rowIndex) => {
+        const end = rowIndex + 1 < accountRows.length ? accountRows[rowIndex + 1].index : lines.length;
+        const accountText = nextValue(row.index, Math.min(end, row.index + 2), accountLabel);
+        const accountNumber = (accountText.match(/\b\d(?:[\d\s-]{7,18})\b/) || [""])[0].replace(/[\s-]/g, "");
+        return {
+          acc: accountNumber,
+          name: cleanOcrName(nextValue(row.index, end, nameLabel).split(/\b(?:CR|SEP)\b/i)[0]),
+          amt: nextValue(row.index, end, denominationLabel, true),
+          details: ""
+        };
+        }).filter(member => member.acc.length >= 8 && member.acc.length <= 20);
+      }
+      if (!extractedMembers.length && tableHeader && !payload.tsv) {
+        const headerIndex = lines.findIndex(line => accountLabel.test(line));
+        const tableLines = lines.slice(Math.max(0, headerIndex + 1));
+        extractedMembers = tableLines.map((line, lineIndex) => {
+          if (/displaying|results|total|page\s*\d/i.test(line)) return null;
+          const rowText = [line, tableLines[lineIndex + 1] || "", tableLines[lineIndex + 2] || ""].join(" ");
+          const candidates = [...line.matchAll(/\d[\d\s-]{7,18}\d|\b\d{8,20}\b/g)]
+            .map(match => match[0].replace(/[\s-]/g, ""))
+            .filter(value => value.length >= 8 && value.length <= 20);
+          const accountNumber = candidates[0] || "";
+          if (!accountNumber) return null;
+          const name = cleanOcrName(rowText.replace(accountNumber, "").split(/\b(?:CR|SEP)\b/i)[0]);
+          const denominationMatch = rowText.match(/(\d[\d,]*(?:\.\d+)?)\s*cr\.?\b/i);
+          const denomination = denominationMatch ? Number(denominationMatch[1].replace(/,/g, "")) : "";
+          return {acc: accountNumber, name, amt: denomination, details: ""};
+        }).filter(member => member && member.acc);
+      }
+      renderOcrResults();
+      status.textContent = extractedMembers.length ? `${extractedMembers.length} member(s) detected. Review before saving.` : "No account numbers detected. Try a clearer image.";
+    }catch(error){
+      status.textContent = error.name === "AbortError" ? "OCR timed out. Try a smaller, clearer image." : (error.message || "Could not read image.");
+    }finally{
+      saveButton.disabled = false;
+      saveButton.textContent = "Save member";
+    }
+  });
+}
+
+let cloudProfileId = "";
+
+async function finishAgentSession(user, fallbackEmail, agentName="RD Agent"){
+  cloudProfileId = user?.id || "";
+  activeAgentId = fallbackEmail.toLowerCase();
+  agentStorageKey = `rd-agent-${encodeURIComponent(activeAgentId)}-`;
+  if (cloudMode) {
+    const profile = await supabaseClient.from("profiles").select("agent_id, display_name, commission_rate").eq("id", cloudProfileId).maybeSingle();
+    if (profile.error) throw profile.error;
+    if (profile.data) {
+      activeAgentId = profile.data.agent_id;
+      cloudCommissionRate = Number(profile.data.commission_rate) || 4.0;
+    } else {
+      const created = await supabaseClient.from("profiles").insert({id: cloudProfileId, agent_id: activeAgentId, display_name: agentName.trim() || "RD Agent", commission_rate: 4.0});
+      if (created.error) throw created.error;
+      cloudCommissionRate = 4.0;
+    }
+  }
+  document.getElementById("active-agent").textContent = activeAgentId;
+  document.getElementById("login-screen").style.display = "none";
+  document.querySelector(".app").classList.add("ready");
+  try{
+    await init();
+  }catch(error){
+    document.querySelector(".app").classList.remove("ready");
+    document.getElementById("login-screen").style.display = "flex";
+    throw error;
+  }
+}
+
+async function startAgentSession(email, password, agentName, mode){
+  activeAgentId = email.toLowerCase();
+  agentStorageKey = `rd-agent-${encodeURIComponent(activeAgentId)}-`;
+  configureCloud();
+  if (cloudMode) {
+    const authResult = mode === "signup"
+      ? await supabaseClient.auth.signUp({email, password})
+      : await supabaseClient.auth.signInWithPassword({email, password});
+    const {data, error} = authResult;
+    if (error) throw error;
+    if (!data.user) throw new Error("Authentication did not return a user.");
+    if (mode === "signup" && !data.session) throw new Error("Check your email to confirm your account, then log in.");
+    await finishAgentSession(data.user, email, agentName);
+    return;
+  }
+  await finishAgentSession(null, email, agentName);
+}
+
+async function restoreSession(){
+  if (!configureCloud()) return;
+  const {data, error} = await supabaseClient.auth.getSession();
+  if (error || !data.session?.user) return;
+  try{
+    await finishAgentSession(data.session.user, data.session.user.email || "agent");
+  }catch(error){
+    document.getElementById("login-error").textContent = error.message || "Could not restore your session.";
+  }
+}
+
+function setupLogin(){
+  let authMode = "login";
+  const setAuthMode = mode => {
+    authMode = mode;
+    const signup = mode === "signup";
+    document.getElementById("signup-mode").style.background = signup ? "var(--ink)" : "var(--paper)";
+    document.getElementById("signup-mode").style.color = signup ? "var(--paper)" : "var(--ink)";
+    document.getElementById("login-mode").style.background = signup ? "var(--paper)" : "var(--ink)";
+    document.getElementById("login-mode").style.color = signup ? "var(--ink)" : "var(--paper)";
+    document.getElementById("agent-name-label").style.display = signup ? "block" : "none";
+    document.getElementById("agent-name").style.display = signup ? "block" : "none";
+    document.getElementById("agent-name").required = signup;
+    document.getElementById("login-submit").textContent = signup ? "Create account" : "Log in";
+    document.getElementById("auth-description").textContent = signup ? "Create your secure agent account with email and password." : "Log in securely with your email and password.";
+    document.getElementById("login-error").textContent = "";
+  };
+  document.getElementById("login-mode").addEventListener("click", () => setAuthMode("login"));
+  document.getElementById("signup-mode").addEventListener("click", () => setAuthMode("signup"));
+  setAuthMode("login");
+  document.getElementById("login-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const email = document.getElementById("agent-email").value.trim().toLowerCase();
+    const password = document.getElementById("agent-password").value;
+    const name = document.getElementById("agent-name").value.trim();
+    if (!email || !password || (authMode === "signup" && !name)){
+      document.getElementById("login-error").textContent = authMode === "signup" ? "Enter your email, name, and password." : "Enter your email and password.";
+      return;
+    }
+    try{
+      await startAgentSession(email, password, name, authMode);
+    }catch(error){
+      document.getElementById("login-error").textContent = error.message || "Authentication failed.";
+    }
+  });
+  document.getElementById("sign-out").addEventListener("click", async () => {
+    if (cloudMode) await supabaseClient.auth.signOut();
+    window.location.reload();
+  });
+}
+
+/* ---------------------------------------------------------------------
+   TABS + WIRING
+--------------------------------------------------------------------- */
+function setupTabs(){
+  document.querySelectorAll(".tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.view + "-view").classList.add("active");
+    });
+  });
+}
+
+function setupCalcInputs(){
+  ["calc-amount","calc-rate","calc-tenure"].forEach(id => {
+    document.getElementById(id).addEventListener("input", renderCalc);
+  });
+  document.querySelectorAll(".tenure-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".tenure-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      document.getElementById("calc-tenure").value = chip.dataset.m;
+      renderCalc();
+    });
+  });
+}
+
+function setupYearSelector(){
+  const select = document.getElementById("tracker-year");
+  [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1].forEach(year => {
+    const option = document.createElement("option");
+    option.value = year;
+    option.textContent = year;
+    if (year === CURRENT_YEAR) option.selected = true;
+    select.appendChild(option);
+  });
+  select.addEventListener("change", () => {
+    selectedYear = Number(select.value);
+    renderMembers(document.getElementById("search").value);
+    renderStats();
+  });
+}
+
+function setupBackup(){
+  const download = (content, type, filename) => {
+    const blob = new Blob([content], {type});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const csvEscape = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  document.getElementById("export-data").addEventListener("click", () => {
+    download(JSON.stringify({app: "rd-lot-register", version: 2, exportedAt: new Date().toISOString(), members: MEMBERS, ticks}, null, 2), "application/json", "rd-lot-register-backup.json");
+  });
+  document.getElementById("export-csv").addEventListener("click", () => {
+    const headers = ["account_number", "account_name", "monthly_rs", "opening_date", "tenure_months", "interest_rate", "nominee_name", "nominee_relation", "mobile", "address", "post_office", "passbook_number", "kyc_status", "account_status", ...MONTH_LABELS.map(month => `${month}_${selectedYear}`)];
+    const rows = MEMBERS.map(member => [member.acc, member.name, member.amt, member.openingDate, member.tenureMonths, member.interestRate, member.nomineeName, member.nomineeRelation, member.mobile, member.address, member.postOffice, member.passbook, member.kycStatus, member.accountStatus, ...getYearTicks(member.acc).map(paid => paid ? "1" : "0")]);
+    const csv = [headers, ...rows].map(row => row.map(csvEscape).join(",")).join("\r\n");
+    download(csv, "text/csv;charset=utf-8", `rd-lot-register-${selectedYear}.csv`);
+  });
+
+  const fileInput = document.getElementById("backup-file");
+  document.getElementById("import-data").addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    try{
+      const isExcel = /\.(xls|xlsx)$/i.test(file.name) || /spreadsheet|excel/.test(file.type);
+      if (isExcel) {
+        if (!window.XLSX) throw new Error("Excel reader is unavailable");
+        const workbook = XLSX.read(await file.arrayBuffer(), {type: "array", cellDates: false});
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, raw: false, defval: ""});
+        const normalizeHeader = value => String(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+        const headerIndex = rows.findIndex(row => {
+          const headers = row.map(normalizeHeader);
+          return headers.some(value => /accountno|accountnumber|acno/.test(value)) &&
+            headers.some(value => /accountname|membername/.test(value)) &&
+            headers.some(value => value === "denomination");
+        });
+        if (headerIndex < 0) throw new Error("Excel headers Account No., Account Name, and Denomination were not found");
+        const headers = rows[headerIndex].map(normalizeHeader);
+        const accountIndex = headers.findIndex(value => /accountno|accountnumber|acno/.test(value));
+        const nameIndex = headers.findIndex(value => /accountname|membername/.test(value));
+        const amountIndex = headers.findIndex(value => value === "denomination");
+        const imported = rows.slice(headerIndex + 1).map(row => {
+          const acc = String(row[accountIndex] || "").replace(/\.0$/, "").replace(/\s+/g, "").trim();
+          const name = String(row[nameIndex] || "").trim().toUpperCase();
+          const amountText = String(row[amountIndex] || "").replace(/,/g, "");
+          const amountMatch = amountText.match(/\d+(?:\.\d+)?/);
+          const amt = amountMatch ? Number(amountMatch[0]) : 0;
+          return normalizeMember({acc, name, amt, details: ""});
+        }).filter(member => /^\d{8,20}$/.test(member.acc) && member.name && member.amt > 0);
+        if (!imported.length) throw new Error("Excel contains no valid member rows");
+        imported.forEach(member => {
+          const existing = MEMBERS.findIndex(item => item.acc === member.acc);
+          if (existing >= 0) MEMBERS[existing] = member; else MEMBERS.push(member);
+        });
+        await saveMembers();
+        populateCalcMemberSelect();
+        renderMembers(document.getElementById("search").value);
+        renderStats();
+        window.alert(`${imported.length} member(s) imported from Excel.`);
+        return;
+      }
+      const text = await file.text();
+      if (file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv") {
+        const lines = text.split(/\r?\n/).filter(Boolean).map(line => line.match(/(?:^|,)\s*("(?:[^"]|"")*"|[^,]*)/g)?.map(cell => cell.replace(/^,/, "").trim().replace(/^"|"$/g, "").replace(/""/g, '"')) || []);
+        const headers = lines.shift().map(header => header.toLowerCase());
+        const imported = lines.map(row => Object.fromEntries(headers.map((header, index) => [header, row[index] || ""]))).filter(row => row.account_number && row.account_name && Number(row.monthly_rs) > 0);
+        if (!imported.length) throw new Error("CSV has no valid member rows");
+        imported.forEach(row => {
+          const existing = MEMBERS.findIndex(member => member.acc === row.account_number);
+          const member = normalizeMember({
+            acc: row.account_number, name: row.account_name.toUpperCase(), amt: Number(row.monthly_rs), details: "",
+            openingDate: row.opening_date || "", tenureMonths: row.tenure_months, interestRate: row.interest_rate,
+            nomineeName: row.nominee_name || "", nomineeRelation: row.nominee_relation || "", mobile: row.mobile || "",
+            address: row.address || "", postOffice: row.post_office || "", passbook: row.passbook_number || "",
+            kycStatus: row.kyc_status || "pending", accountStatus: row.account_status || "active",
+          });
+          if (existing >= 0) MEMBERS[existing] = member; else MEMBERS.push(member);
+          const yearTicks = getYearTicks(member.acc, selectedYear);
+          MONTH_LABELS.forEach((month, index) => { if (Object.prototype.hasOwnProperty.call(row, `${month.toLowerCase()}_${selectedYear}`)) yearTicks[index] = row[`${month.toLowerCase()}_${selectedYear}`] === "1"; });
+        });
+        await saveMembers();
+        await saveTicks();
+        renderMembers(document.getElementById("search").value);
+        renderStats();
+        window.alert(`${imported.length} member(s) imported from CSV.`);
+        return;
+      }
+      const backup = JSON.parse(text);
+      if (!backup || backup.app !== "rd-lot-register" || !backup.ticks) throw new Error("Invalid backup");
+      if (Array.isArray(backup.members)) {
+        MEMBERS.length = 0;
+        backup.members.forEach(member => {
+          if (member?.acc && member?.name && Number.isFinite(Number(member.amt))) MEMBERS.push(normalizeMember(member));
+        });
+        await saveMembers();
+      }
+      ticks = backup.ticks;
+      await loadTicks();
+      await saveTicks();
+      populateCalcMemberSelect();
+      renderMembers(document.getElementById("search").value);
+      renderStats();
+      window.alert("Backup imported successfully.");
+    }catch(e){
+      window.alert("Could not import this backup file.");
+    }finally{
+      fileInput.value = "";
+    }
+  });
+}
+
+async function init(){
+  await loadMembers();
+  await loadTicks();
+  renderMembers();
+  renderStats();
+  populateCalcMemberSelect();
+  renderCalc();
+  setupTabs();
+  setupCalcInputs();
+  setupYearSelector();
+  setupMemberForm();
+  setupBackup();
+  setupRealtime();
+
+  document.getElementById("search").addEventListener("input", (e) => {
+    renderMembers(e.target.value);
+  });
+}
+
+setupLogin();
+restoreSession();
+</script>
+</body>
+</html>
